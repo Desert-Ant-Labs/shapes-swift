@@ -508,7 +508,7 @@ res="packages/shapes-kotlin/shapes-tflite-resources/src/main/resources"
 mkdir -p "$res"
 cp Sources/ShapesTFLiteResources/Resources/{shapes.tflite,shapes_meta.json} "$res/"
 # The base AAR must ship no model; drop any staged there by older builds.
-rm -f "$KOTLIN/resources/"{shapes.onnx,shapes.tflite,shapes_meta.json}
+rm -f "$KOTLIN/resources/"{shapes.tflite,shapes_meta.json}
 
 du -sh "$KOTLIN/jniLibs" "$res"
 echo "done: shapes-kotlin native + shapes-tflite-resources are ready for the AAR build"
