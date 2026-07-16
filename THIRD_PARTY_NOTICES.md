@@ -16,5 +16,5 @@ No non-commercial or unlicensed data is used.
 
 Android JSON parsing uses the Kotlin host's native JSON through the JNI host,
 and on-demand model download uses the host's HTTP stack. On-device inference
-uses ONNX Runtime (`libonnxruntime.so`). No JSON or HTTP library is vendored or
+uses LiteRT (`libLiteRt.so`). No JSON or HTTP library is vendored or
 hand-rolled in the native layer.

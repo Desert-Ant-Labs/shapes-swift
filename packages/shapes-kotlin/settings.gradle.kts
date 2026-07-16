@@ -20,4 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "shapes"
-include(":shapes-onnx-resources")
+include(":shapes-tflite-resources")

@@ -2,13 +2,13 @@ import com.vanniktech.maven.publish.JavaLibrary
 import com.vanniktech.maven.publish.JavadocJar
 
 // Optional bundled model for Shapes on Android (the Android counterpart of the
-// SwiftPM `ShapesONNXResources` product). The model files (shapes.onnx,
+// SwiftPM `ShapesTFLiteResources` product). The model files (shapes.tflite,
 // shapes_meta.json) are staged into src/main/resources by
 // `mise run android-natives`; this module packages them as classpath
 // resources. An app bundles the model by depending on this artifact:
 //
-//     implementation("ai.desertant:shapes")                 // the SDK (no model)
-//     implementation("ai.desertant:shapes-onnx-resources")  // opt-in: bundle the model
+//     implementation("ai.desertant:shapes")                   // the SDK (no model)
+//     implementation("ai.desertant:shapes-tflite-resources")  // opt-in: bundle the model
 //
 // Without it, `Shapes(context)` downloads the model on demand instead.
 plugins {
@@ -17,7 +17,7 @@ plugins {
 }
 
 group = "ai.desertant"
-version = "0.1.0"
+version = "0.2.0"
 
 // The model files are staged (gitignored) by the root project's Swift build
 // task; depend on it so a fresh checkout cannot produce or publish an empty
@@ -30,12 +30,12 @@ tasks.withType<Jar>().matching { it.name == "sourcesJar" }.configureEach {
     dependsOn(stageModel)
     // The model binaries are the main jar's content; keep the sources jar
     // (required by Maven Central) minimal instead of duplicating ~14 MB.
-    exclude("*.onnx", "*.json")
+    exclude("*.tflite", "*.json")
 }
 tasks.jar {
     doFirst {
         val resources = file("src/main/resources")
-        val required = listOf("shapes.onnx", "shapes_meta.json")
+        val required = listOf("shapes.tflite", "shapes_meta.json")
         val missing = required.filterNot { resources.resolve(it).isFile }
         check(missing.isEmpty()) {
             "model files missing from $resources: $missing (run `mise run android-natives`)"
@@ -48,10 +48,10 @@ mavenPublishing {
     if (providers.gradleProperty("signingInMemoryKey").isPresent) {
         signAllPublications()
     }
-    coordinates("ai.desertant", "shapes-onnx-resources", version.toString())
+    coordinates("ai.desertant", "shapes-tflite-resources", version.toString())
     configure(JavaLibrary(javadocJar = JavadocJar.Empty(), sourcesJar = true))
     pom {
-        name.set("Shapes ONNX resources")
+        name.set("Shapes LiteRT resources")
         description.set("Opt-in bundled on-device Shapes model files for Android (no network at runtime).")
         url.set("https://github.com/Desert-Ant-Labs/shapes")
         licenses {

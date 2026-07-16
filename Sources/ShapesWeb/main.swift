@@ -4,8 +4,8 @@ import JavaScriptKit
 @_spi(ShapesBindings) import Shapes
 
 // WebAssembly entry point. Mirrors the iOS/Swift SDK (recognition only). The JS
-// host must set `globalThis.__ShapesHost` (an async ONNX session + runner, see
-// desert-ant-core's JSInferenceSession) before the first recognition. After
+// host must set `globalThis.__ShapesHost` (an async LiteRT.js session + runner,
+// see desert-ant-core's JSInferenceSession) before the first recognition. After
 // start, the module exposes:
 //
 //     globalThis.__ShapesExports = {

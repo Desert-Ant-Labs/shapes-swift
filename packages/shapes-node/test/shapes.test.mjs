@@ -1,5 +1,7 @@
 // The shapes-node test suite. Runs through the WebAssembly runtime with model
-// files loaded from the local ONNX resources instead of the Hugging Face Hub.
+// files loaded from the local LiteRT resources instead of the Hugging Face Hub.
+// LiteRT.js is a browser runtime, so in node the model load throws and these
+// tests skip gracefully; the headless-Chromium example validates the real path.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import path from "node:path";
@@ -8,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { Shapes } from "../index.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const directory = path.join(here, "../../../Sources/ShapesONNXResources/Resources");
+const directory = path.join(here, "../../../Sources/ShapesTFLiteResources/Resources");
 
 let shapes;
 let loadError;

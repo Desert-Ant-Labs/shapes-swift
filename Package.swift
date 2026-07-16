@@ -8,14 +8,14 @@ import Foundation
 //                               Inference sessions + platform session factory)
 //   Sources/Shapes              shared pipeline (pure Swift; platform variation
 //                               is data: artifact names + tensor layouts)
-//   Sources/ShapesCoreMLResources  Apple/Core ML model files (not ONNX)
-//   Sources/ShapesONNXResources    ONNX model files for Linux/Android/Windows
+//   Sources/ShapesCoreMLResources  Apple/Core ML model files (not LiteRT)
+//   Sources/ShapesTFLiteResources  LiteRT (.tflite) model files for Linux/Android/Windows
 //   Sources/ShapesAndroid      C ABI + Swift JNI -> packages/shapes-kotlin
 //   Sources/ShapesWeb           wasm entry point -> packages/shapes-node
 //
 // Platforms that load resources from a SwiftPM bundle (Apple + Linux; Android
 // receives assets through the FFI and wasm through the JS host). Apple
-// platforms get only Core ML resources; Linux gets only ONNX resources.
+// platforms get only Core ML resources; Linux gets only LiteRT resources.
 let appleResourcePlatforms: [Platform] = [.macOS, .macCatalyst, .iOS, .tvOS, .watchOS, .visionOS]
 
 // The Android static-stdlib link needs no macros in the build graph, so this
@@ -51,14 +51,14 @@ let package = Package(
         // Opt-in app bundling: add one of these and pass its bundle to
         // `Shapes(bundle:)` to ship the model in your app instead of downloading.
         .library(name: "ShapesCoreMLResources", targets: ["ShapesCoreMLResources"]),
-        .library(name: "ShapesONNXResources", targets: ["ShapesONNXResources"]),
+        .library(name: "ShapesTFLiteResources", targets: ["ShapesTFLiteResources"]),
         // Android JNI library (built by `mise run android-natives`).
         .library(name: "ShapesAndroid", type: .dynamic, targets: ["ShapesAndroid"]),
     ] + wasmProducts,
     dependencies: [
         // Reusable cross-platform primitives (JSON, ModelStore, Inference,
         // FFIBuffer, HostBridge, PlatformSupport, ModelResources).
-        .package(url: "https://github.com/Desert-Ant-Labs/desert-ant-core.git", from: "0.1.0"),
+        .package(url: "https://github.com/Desert-Ant-Labs/desert-ant-core.git", from: "0.2.4"),
         // Portable transcendentals (`Double.cos`, `Double.atan2`, ...) for the
         // geometry math; the stdlib has none and importing libm per platform is
         // messier (and pulls Foundation on Android/wasm).
@@ -76,7 +76,7 @@ let package = Package(
                 .product(name: "PlatformSupport", package: "desert-ant-core"),
                 .product(name: "ModelResources", package: "desert-ant-core"),
                 .product(name: "RealModule", package: "swift-numerics"),
-                // Named-tensor inference sessions (Core ML | ONNX Runtime | JS
+                // Named-tensor inference sessions (Core ML | LiteRT | JS
                 // host). The model is downloaded on demand by default; the
                 // resource targets below are opt-in and passed via
                 // `Shapes(bundle:)`, so the core library does not ship the model.
@@ -88,7 +88,7 @@ let package = Package(
             // core needs no dependency on the model-bundling resource targets.
         ),
 
-        // MARK: resources (split so Apple apps do not ship the unused ONNX model)
+        // MARK: resources (split so Apple apps do not ship the unused LiteRT model)
         .target(
             name: "ShapesCoreMLResources",
             resources: [
@@ -97,9 +97,9 @@ let package = Package(
             ]
         ),
         .target(
-            name: "ShapesONNXResources",
+            name: "ShapesTFLiteResources",
             resources: [
-                .copy("Resources/shapes.onnx"),
+                .copy("Resources/shapes.tflite"),
                 .copy("Resources/shapes_meta.json"),
             ]
         ),
@@ -120,7 +120,7 @@ let package = Package(
             dependencies: [
                 "Shapes",
                 .target(name: "ShapesCoreMLResources", condition: .when(platforms: appleResourcePlatforms)),
-                .target(name: "ShapesONNXResources", condition: .when(platforms: [.linux, .windows])),
+                .target(name: "ShapesTFLiteResources", condition: .when(platforms: [.linux, .windows])),
             ]
         ),
     ] + wasmTargets

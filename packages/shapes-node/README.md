@@ -3,10 +3,10 @@
 On-device single-stroke shape recognition for JavaScript (node and browsers).
 Turns one hand-drawn stroke into a clean line, rectangle, triangle, ellipse, or
 star, fully locally: the package runs through a local WebAssembly runtime with
-inference via ONNX Runtime.
+inference via LiteRT.js.
 
 ```bash
-npm install @desert-ant-labs/shapes onnxruntime-node   # or onnxruntime-web in browsers
+npm install @desert-ant-labs/shapes @litertjs/core   # LiteRT.js is a browser runtime
 ```
 
 ```js
@@ -26,8 +26,14 @@ if (shape?.kind === "rectangle") {
   offline, otherwise the model is downloaded into it. Omit for the managed
   cache (`~/.cache/desert-ant-models/...`).
 - `onProgress`: download progress callback, fraction in `[0, 1]`.
-- `ort`: bring-your-own ONNX Runtime module (e.g. a bundler-managed
-  `onnxruntime-web`), useful for bundlers and React Native.
+- `litert`: bring-your-own LiteRT.js module (the `@litertjs/core` namespace),
+  useful for bundlers and custom builds.
+- `litertWasmDir`: URL/path to the LiteRT.js Wasm directory (defaults to the
+  installed package in node and the jsDelivr CDN in the browser).
+- `accelerator`: `"wasm"` (XNNPACK CPU, default), `"webgpu"`, or `"webnn"`.
+
+> LiteRT.js needs a browser (DOM/WebGPU), so recognition runs in browsers; a
+> Node import loads fine but model inference requires a browser environment.
 
 `recognize(points, options?)` returns a `Shape` (discriminated by `kind`:
 `"line"`, `"rectangle"`, `"triangle"`, `"ellipse"`, `"star"`) or `null` when the

@@ -14,9 +14,9 @@ import kotlin.math.sin
 
 /**
  * Instrumented tests for the Android binding, exercising the real on-device path
- * via JNI: platform JSON via CHostBridge, ONNX Runtime inference, and the
+ * via JNI: platform JSON via CHostBridge, LiteRT inference, and the
  * static-stdlib runtime. The bundled model comes from the
- * `shapes-onnx-resources` androidTest dependency.
+ * `shapes-tflite-resources` androidTest dependency.
  */
 @RunWith(AndroidJUnit4::class)
 class ShapesTest {

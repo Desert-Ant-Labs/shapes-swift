@@ -3,10 +3,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // Android library (AAR) with prebuilt native libraries. Gradle drives the
 // native build: `apply(from = "swift-android.gradle.kts")` runs `mise run
-// android-natives` (static-stdlib Swift JNI + ONNX Runtime) before packaging,
+// android-natives` (static-stdlib Swift JNI + LiteRT) before packaging,
 // dropping the per-ABI libShapesAndroid.so into src/main/jniLibs. This AAR
 // ships no model: it downloads on demand by default. Bundling is opt-in via
-// the `:shapes-onnx-resources` artifact.
+// the `:shapes-tflite-resources` artifact.
 //
 // Publishing: the AAR contains a prebuilt Swift native, so JitPack (which
 // builds from source) cannot produce it. `mise run publish-android` publishes
@@ -23,7 +23,7 @@ plugins {
 apply(from = "swift-android.gradle.kts")
 
 group = "ai.desertant"
-version = "0.1.0"
+version = "0.2.0"
 
 android {
     namespace = "ai.desertant.shapes"
@@ -57,7 +57,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     // Bundle the model for the instrumented bundled-model tests.
-    androidTestImplementation(project(":shapes-onnx-resources"))
+    androidTestImplementation(project(":shapes-tflite-resources"))
 }
 
 mavenPublishing {

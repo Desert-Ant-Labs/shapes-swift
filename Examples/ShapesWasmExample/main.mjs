@@ -1,9 +1,14 @@
-// Node example for packages/shapes-node with local WebAssembly and
-// onnxruntime-node inference.
+// Node example for packages/shapes-node with local WebAssembly.
+//
+// Note: inference uses LiteRT.js (@litertjs/core), which is a browser runtime
+// (it needs a DOM to load its Wasm). Run the browser example (browser.html /
+// `npm run browser-example`) to exercise on-device inference; in plain Node the
+// model session is unavailable and recognition throws. This file shows the API
+// shape and doubles as a smoke test for the graceful "runtime absent" path.
 import { Shapes } from "@desert-ant-labs/shapes";
 
 // Shapes downloads, verifies (SHA-256), and caches the model from the Hub;
-// onnxruntime-node runs inference. First run fetches; later runs are cached.
+// LiteRT.js runs inference in the browser. First run fetches; later runs cache.
 const shapes = await Shapes.load({});
 
 // A wobbly hand-drawn rectangle (points in canvas coordinates).

@@ -38,13 +38,18 @@ export interface LoadOptions {
   directory?: string;
   /** Download progress in `[0, 1]`, called during {@link Shapes.load}. */
   onProgress?: (fraction: number) => void;
-  /** Bring-your-own ONNX Runtime module (onnxruntime-web or -node). */
-  ort?: unknown;
+  /** Bring-your-own LiteRT.js module (the `@litertjs/core` namespace). */
+  litert?: unknown;
+  /** URL/path to the LiteRT.js Wasm directory (defaults: installed package in
+   * node, jsDelivr CDN in the browser). */
+  litertWasmDir?: string;
+  /** LiteRT.js accelerator: `"wasm"` (XNNPACK CPU, default), `"webgpu"`, or `"webnn"`. */
+  accelerator?: "wasm" | "webgpu" | "webnn";
 }
 
 /**
  * On-device single-stroke shape recognition for JavaScript with local
- * WebAssembly and ONNX Runtime inference. Create one with
+ * WebAssembly and LiteRT.js inference. Create one with
  * `await Shapes.load(...)` and reuse it.
  *
  * ```ts

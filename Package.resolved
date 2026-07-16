@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Desert-Ant-Labs/desert-ant-core.git",
       "state" : {
-        "revision" : "e0271fda6d9b4f561d283ba6cbdf44bf0a3c7980",
-        "version" : "0.1.0"
+        "revision" : "5bb41cfa6f5e86a9f3074fa256937fbc09521124",
+        "version" : "0.2.4"
       }
     },
     {

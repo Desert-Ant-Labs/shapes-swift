@@ -11,7 +11,7 @@ const root = path.resolve(here, "../..");
 const mime = {
   ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
   ".wasm": "application/wasm", ".json": "application/json",
-  ".bin": "application/octet-stream", ".onnx": "application/octet-stream",
+  ".bin": "application/octet-stream", ".tflite": "application/octet-stream",
 };
 
 const server = http.createServer(async (req, res) => {

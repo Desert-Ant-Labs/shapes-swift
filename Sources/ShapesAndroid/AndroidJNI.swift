@@ -10,7 +10,7 @@ import HostBridge
 // Shapes, with lazy loading, isDownloaded, download, and run.
 //
 // The model is either bundled (createBundled, bytes from the optional
-// shapes-onnx-resources) or loaded on demand (create, download/local dir).
+// shapes-tflite-resources) or loaded on demand (create, download/local dir).
 // Points cross as a little-endian f64 byte array; the recognized shape comes
 // back as the FFIBuffer length-prefixed typed buffer. Handles cross as jlong.
 
@@ -31,7 +31,7 @@ public func ShapesNative_create(_ env: UnsafeMutablePointer<JNIEnv?>, _ cls: jcl
     }
 }
 
-/// Create a recognizer from bundled model bytes (the shapes-onnx-resources path).
+/// Create a recognizer from bundled model bytes (the shapes-tflite-resources path).
 @_cdecl("Java_ai_desertant_shapes_ShapesNative_createBundled")
 public func ShapesNative_createBundled(_ env: UnsafeMutablePointer<JNIEnv?>, _ cls: jclass?,
                                        _ metaJson: jbyteArray?, _ model: jbyteArray?) -> jlong {

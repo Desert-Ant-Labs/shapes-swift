@@ -5,18 +5,18 @@ import XCTest
 #if canImport(CoreML)
 import ShapesCoreMLResources
 #elseif os(Linux) || os(Windows)
-import ShapesONNXResources
+import ShapesTFLiteResources
 #endif
 
 /// End-to-end recognition through the bundled model. On Apple this runs the
-/// Core ML artifact; on Linux/Windows the ONNX artifact (via ONNX Runtime). Both
+/// Core ML artifact; on Linux/Windows the LiteRT artifact (via LiteRT). Both
 /// exports come from the same checkpoint, so results match.
 final class ShapesRecognitionTests: XCTestCase {
     private func makeShapes() -> Shapes {
         #if canImport(CoreML)
         return Shapes(bundle: ShapesCoreMLResourcesBundle.bundle)
         #elseif os(Linux) || os(Windows)
-        return Shapes(bundle: ShapesONNXResourcesBundle.bundle)
+        return Shapes(bundle: ShapesTFLiteResourcesBundle.bundle)
         #else
         fatalError("no bundled model for this platform")
         #endif

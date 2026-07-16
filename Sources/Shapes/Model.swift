@@ -2,21 +2,19 @@ import Inference
 
 /// The neural stage plus geometry verification: preprocess a stroke into the
 /// model's feature vectors, classify it through the shared `InferenceSession`
-/// (Core ML | ONNX Runtime | JS host, chosen by desert-ant-core), then fit and
+/// (Core ML | LiteRT | JS host, chosen by desert-ant-core), then fit and
 /// gate the proposed shape. This file only knows shapes' tensor layout.
 final class Model: @unchecked Sendable {
     private let session: any InferenceSession
-    private let layout: ModelLayout
     private let meta: ShapeMeta
     private let preprocessor: StrokePreprocessor
 
-    /// The Core ML and ONNX exports share one graph: a fixed 256-length window
+    /// The Core ML and LiteRT exports share one graph: a fixed 256-length window
     /// of `[distance, cos, sin]` features with a 1/0 validity mask.
     private static let sequenceLength = 256
 
     init(assets: ModelAssets) throws {
         session = assets.session
-        layout = assets.layout
         meta = try ShapeMeta(json: assets.metaJSON)
         preprocessor = StrokePreprocessor(config: meta.config)
     }
@@ -60,13 +58,6 @@ final class Model: @unchecked Sendable {
 
     /// Build the padded-window tensors and read the `probs` output.
     private func probabilities(_ features: [StrokePoint]) async throws -> [Float] {
-        switch layout {
-        case .paddedWindow:
-            return try await paddedWindowProbabilities(features)
-        }
-    }
-
-    private func paddedWindowProbabilities(_ features: [StrokePoint]) async throws -> [Float] {
         let seq = Self.sequenceLength
         var feat = [Float](repeating: 0, count: seq * 3)
         var mask = [Float](repeating: 0, count: seq)

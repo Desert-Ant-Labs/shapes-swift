@@ -1,7 +1,7 @@
 // Gradle drives the native build through mise. `mise run android-natives` (defined
 // in the repo-root mise.toml) builds libShapesAndroid.so per ABI, copies it +
-// libc++_shared.so + libonnxruntime.so into src/main/jniLibs, and stages the
-// model into the optional :shapes-onnx-resources module's resources. This task
+// libc++_shared.so + libLiteRt.so into src/main/jniLibs, and stages the
+// model into the optional :shapes-tflite-resources module's resources. This task
 // runs before the Android merge/package steps.
 //
 // Requires `mise` on PATH and the config trusted; MISE_TRUSTED_CONFIG_PATHS makes
@@ -21,7 +21,7 @@ val buildSwiftNatives by tasks.registering(Exec::class) {
     inputs.dir("$rootDir/../../Sources")
     inputs.file("$rootDir/../../mise.toml")
     outputs.dir("$rootDir/src/main/jniLibs")
-    outputs.dir("$rootDir/shapes-onnx-resources/src/main/resources")
+    outputs.dir("$rootDir/shapes-tflite-resources/src/main/resources")
 }
 
 tasks.named("preBuild").configure { dependsOn(buildSwiftNatives) }

@@ -9,18 +9,14 @@ import ModelStore
 /// The model's file names and per-platform artifacts, in one place.
 enum ShapesModel {
     static let meta = "shapes_meta.json"
-    static let onnx = "shapes.onnx"          // ONNX Runtime platforms + wasm
+    static let tflite = "shapes.tflite"      // LiteRT platforms (Linux/Android/Windows) + wasm
     static let coreML = "shapes.mlmodelc"    // Apple
 
-    /// The runnable artifact on this platform.
-    static var artifact: String { ModelPlatform.current == .apple ? coreML : onnx }
-}
-
-/// The tensor layout of a shapes export. The Core ML and ONNX exports share one
-/// graph (a fixed 256-length window of features plus a validity mask), so there
-/// is a single layout today; kept as an enum for future exports.
-enum ModelLayout: Sendable {
-    case paddedWindow
+    /// The runnable artifact on this platform. Both the Core ML and the LiteRT
+    /// exports use the same fixed-256 window of features plus a validity mask
+    /// (see `Model.probabilities`), so there is no per-artifact
+    /// tensor shaping to track.
+    static var artifact: String { ModelPlatform.current == .apple ? coreML : tflite }
 }
 
 /// Loaded model inputs: the sidecar metadata plus a ready inference session.
@@ -32,22 +28,19 @@ public struct ModelAssets: Sendable {
     public let metaJSON: String
     /// The platform's ready-to-run session for the model artifact.
     let session: any InferenceSession
-    /// The artifact's tensor layout.
-    let layout: ModelLayout
 
     /// Bindings entry point: in-memory model files (e.g. the Android AAR reads
-    /// them from classpath resources). The model bytes must be the ONNX export.
+    /// them from classpath resources). The model bytes must be the LiteRT
+    /// (`.tflite`) export.
     public init(metaJSON: String, modelBytes: [UInt8]) throws {
         self.init(
             metaJSON: metaJSON,
-            session: try inferenceSession(modelBytes: modelBytes),
-            layout: .paddedWindow)
+            session: try inferenceSession(modelBytes: modelBytes))
     }
 
-    init(metaJSON: String, session: any InferenceSession, layout: ModelLayout) {
+    init(metaJSON: String, session: any InferenceSession) {
         self.metaJSON = metaJSON
         self.session = session
-        self.layout = layout
     }
 
     /// Build from a resolved model directory: read the sidecar and let the core
@@ -55,8 +48,7 @@ public struct ModelAssets: Sendable {
     static func shapes(files: StoredModel) async throws -> ModelAssets {
         ModelAssets(
             metaJSON: try files.readString(ShapesModel.meta),
-            session: try await files.inferenceSession(model: ShapesModel.artifact, hostGlobal: "__ShapesHost"),
-            layout: .paddedWindow)
+            session: try await files.inferenceSession(model: ShapesModel.artifact, hostGlobal: "__ShapesHost"))
     }
 }
 
@@ -64,7 +56,7 @@ public extension Shapes {
     /// The published model repository.
     static var modelRepo: String { "desert-ant-labs/shapes" }
     /// The model revision this SDK is built against (pinned; not configurable).
-    static var modelRevision: String { "v0.1.0" }
+    static var modelRevision: String { "v0.2.0" }
 
     /// Resolve the model for `directory` (adopt your files, or download there),
     /// then build loadable assets. `nil` uses the managed cache.
@@ -83,16 +75,16 @@ public extension Shapes {
     }
 
     private static func distribution() -> ModelDistribution {
-        let onnx = [ShapesModel.onnx, ShapesModel.meta]
+        let tflite = [ShapesModel.tflite, ShapesModel.meta]
         return ModelDistribution(
             repo: modelRepo,
             revision: modelRevision,
             files: [
                 .apple: [ShapesModel.coreML + "/", ShapesModel.meta],
-                .android: onnx,
-                .linux: onnx,
-                .windows: onnx,
-                .web: onnx,
+                .android: tflite,
+                .linux: tflite,
+                .windows: tflite,
+                .web: tflite,
             ]
         )
     }
@@ -101,8 +93,8 @@ public extension Shapes {
 // MARK: opt-in app bundling (Apple / Linux)
 
 // Add a model resources product (ShapesCoreMLResources on Apple,
-// ShapesONNXResources on Linux) and pass its bundle. On Android, bundling is the
-// optional `:shapes-onnx-resources` artifact; wasm always downloads. This is the
+// ShapesTFLiteResources on Linux) and pass its bundle. On Android, bundling is the
+// optional `:shapes-tflite-resources` artifact; wasm always downloads. This is the
 // one platform conditional in the model code: `Bundle` is a Foundation type, so
 // the initializer only exists where SwiftPM resource bundles do.
 #if canImport(CoreML) || os(Linux)
@@ -132,8 +124,7 @@ extension ModelAssets {
         do {
             return ModelAssets(
                 metaJSON: try resources.readString(ShapesModel.meta),
-                session: try inferenceSession(modelPath: try resources.path(ShapesModel.artifact)),
-                layout: .paddedWindow)
+                session: try inferenceSession(modelPath: try resources.path(ShapesModel.artifact)))
         } catch {
             throw ShapesError.resourceMissing
         }

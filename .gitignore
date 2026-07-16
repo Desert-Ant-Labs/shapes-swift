@@ -20,7 +20,7 @@ packages/shapes-kotlin/natives/
 packages/shapes-kotlin/.gradle/
 packages/shapes-kotlin/build/
 packages/shapes-kotlin/src/main/resources/
-packages/shapes-kotlin/shapes-onnx-resources/src/main/resources/
-packages/shapes-kotlin/shapes-onnx-resources/build/
+packages/shapes-kotlin/shapes-tflite-resources/src/main/resources/
+packages/shapes-kotlin/shapes-tflite-resources/build/
 mise.local.toml
 mise.*.local.toml

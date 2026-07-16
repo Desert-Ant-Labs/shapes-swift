@@ -4,14 +4,16 @@ import ai.desertant.core.HostBridge
 
 /**
  * JNI surface over `libShapesAndroid.so`, built by `mise run android-natives`.
- * Android only: `libShapesAndroid.so` statically links its runtime.
+ * Android only: `libShapesAndroid.so` statically links its Swift runtime but
+ * dynamically depends on `libLiteRt.so`, so that must load first.
  * Instance-based: each `Shapes` is an opaque native handle (a `Long`). Points
  * cross as a little-endian f64 byte array; the recognized shape comes back as an
  * FFIBuffer typed binary buffer.
  *
- * `jsonParseTree` / `httpTree` / `httpDownload` are the host callbacks the
- * native runtime looks up on this class. They forward to
- * `ai.desertant.core.HostBridge`.
+ * `regexMatches` / `jsonParseTree` / `httpTree` / `httpDownload` are the host
+ * callbacks the native runtime looks up on this class. They forward to
+ * `ai.desertant.core.HostBridge`. The core installs all of them unconditionally,
+ * so every forwarder must be present even if this pipeline does not use it.
  */
 internal object ShapesNative {
     @Volatile private var loaded = false
@@ -20,6 +22,9 @@ internal object ShapesNative {
         if (loaded) return
         synchronized(this) {
             if (loaded) return
+            // Load the LiteRT runtime first so libShapesAndroid.so's DT_NEEDED
+            // libLiteRt.so resolves.
+            System.loadLibrary("LiteRt")
             System.loadLibrary("ShapesAndroid")
             loaded = true
         }
@@ -31,6 +36,10 @@ internal object ShapesNative {
     @JvmStatic external fun isDownloaded(handle: Long): Int
     @JvmStatic external fun download(handle: Long): Int
     @JvmStatic external fun run(handle: Long, pointBytes: ByteArray, minimumConfidence: Double): ByteArray?
+
+    @JvmStatic
+    fun regexMatches(patternUtf8: ByteArray, caseInsensitive: Boolean, textUtf8: ByteArray, firstOnly: Boolean): ByteArray =
+        HostBridge.regexMatches(patternUtf8, caseInsensitive, textUtf8, firstOnly)
 
     @JvmStatic
     fun jsonParseTree(jsonUtf8: ByteArray): ByteArray = HostBridge.jsonParseTree(jsonUtf8)

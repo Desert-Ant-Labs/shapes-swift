@@ -42,14 +42,14 @@ class Shapes private constructor(private val handle: Long) : AutoCloseable {
     companion object {
         /**
          * A recognizer using the model bundled in your app via the
-         * `ai.desertant:shapes-onnx-resources` dependency (no network).
+         * `ai.desertant:shapes-tflite-resources` dependency (no network).
          */
         fun bundled(): Shapes {
             ShapesNative.ensureLoaded()
             val handle = ShapesNative.createBundled(
-                resource("shapes_meta.json"), resource("shapes.onnx"))
+                resource("shapes_meta.json"), resource("shapes.tflite"))
             if (handle == 0L) throw ShapesException(
-                "bundled model unavailable; add the `ai.desertant:shapes-onnx-resources` dependency")
+                "bundled model unavailable; add the `ai.desertant:shapes-tflite-resources` dependency")
             return Shapes(handle)
         }
 
@@ -65,7 +65,7 @@ class Shapes private constructor(private val handle: Long) : AutoCloseable {
             (Shapes::class.java.getResourceAsStream("/$name")
                 ?: throw ShapesException(
                     "bundled model resource not found: $name. Add the " +
-                        "`ai.desertant:shapes-onnx-resources` dependency, or use Shapes(context)."))
+                        "`ai.desertant:shapes-tflite-resources` dependency, or use Shapes(context)."))
                 .use { it.readBytes() }
     }
 

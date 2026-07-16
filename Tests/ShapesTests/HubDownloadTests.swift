@@ -4,7 +4,7 @@ import XCTest
 
 /// End-to-end: download the model from the Hub (no bundled resources), then run
 /// a real recognition. Network + the real model, so opt-in via HF_INTEGRATION=1.
-/// Note: the non-Apple path needs `shapes.onnx` published on the model repo at
+/// Note: the non-Apple path needs `shapes.tflite` published on the model repo at
 /// the pinned revision (Apple uses `shapes.mlmodelc`).
 final class HubDownloadTests: XCTestCase {
     func testDownloadThenRecognize() async throws {
