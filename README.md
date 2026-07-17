@@ -43,7 +43,7 @@ Requirements: iOS 16+, macOS 13+, tvOS 16+, watchOS 9+, visionOS 1+, and Swift 5
 Add Shapes with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.1")
+.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.2")
 ```
 
 Then add the `Shapes` product to your app target. Live PencilKit snapping is part of the `Shapes` product.
@@ -129,7 +129,7 @@ dependencyResolutionManagement {
 
 // build.gradle.kts
 dependencies {
-    implementation("ai.desertant:shapes:0.4.1")
+    implementation("ai.desertant:shapes:0.4.2")
 }
 ```
 
@@ -137,8 +137,8 @@ dependencies {
 
 ```kotlin
 dependencies {
-    implementation("ai.desertant:shapes:0.4.1")
-    implementation("ai.desertant:shapes-tflite-resources:0.4.1")
+    implementation("ai.desertant:shapes:0.4.2")
+    implementation("ai.desertant:shapes-tflite-resources:0.4.2")
 }
 ```
 
@@ -194,8 +194,11 @@ val offline = Shapes.bundled()                       // needs shapes-tflite-reso
 The same import runs in the browser (WebAssembly + LiteRT.js) and server-side in Node (a prebuilt native core), selected automatically by conditional exports. Node needs no setup; browser builds add the LiteRT.js runtime.
 
 ```bash
-npm install @desert-ant-labs/shapes      # works server-side in Node out of the box
-npm install @litertjs/core               # add for browser builds (optional peer dependency)
+# Browser builds:
+npm i @desert-ant-labs/shapes @litertjs/core
+
+# Node only:
+npm i @desert-ant-labs/shapes
 ```
 
 Server-side native builds ship for linux-x64, linux-arm64 (LiteRT), and darwin-arm64 (Core ML); other platforms fall back to a clear error, so use the Swift package or a browser there.

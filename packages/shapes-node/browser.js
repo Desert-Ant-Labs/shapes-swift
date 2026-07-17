@@ -40,7 +40,22 @@ const core = await instantiateCore();
 // inject a module via `options.litert` (tests/custom builds) and override the
 // Wasm directory via `options.litertWasmDir`.
 async function loadLiteRtModule(options) {
-  return options.litert ?? (await import("@litertjs/core"));
+  if (options.litert) return options.litert;
+  try {
+    return await import("@litertjs/core");
+  } catch (cause) {
+    const missingLiteRt =
+      cause?.code === "ERR_MODULE_NOT_FOUND" ||
+      cause?.code === "MODULE_NOT_FOUND" ||
+      String(cause?.message ?? "").includes("@litertjs/core");
+    if (!missingLiteRt) throw cause;
+    throw new Error(
+      "@desert-ant-labs/shapes browser runtime requires @litertjs/core. " +
+        "Install it with: npm i @desert-ant-labs/shapes @litertjs/core. " +
+        "If you already bundle LiteRT.js yourself, pass it to Shapes.load({ litert }).",
+      { cause },
+    );
+  }
 }
 
 async function resolveWasmDir(options) {

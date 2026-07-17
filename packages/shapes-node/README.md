@@ -12,9 +12,11 @@ One import, resolved automatically by conditional exports:
   macOS). No build tools, no flags.
 
 ```bash
-npm install @desert-ant-labs/shapes
-# In a browser build, also add the LiteRT.js runtime:
-npm install @litertjs/core
+# Browser builds:
+npm i @desert-ant-labs/shapes @litertjs/core
+
+# Node only:
+npm i @desert-ant-labs/shapes
 ```
 
 ```js
