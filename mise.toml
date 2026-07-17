@@ -3,7 +3,8 @@
 #
 #   mise run build-swift     # SwiftPM build (Core ML on Apple hosts, LiteRT on Linux)
 #   mise run build-android   # Android AAR -> packages/shapes-kotlin/build/outputs/aar
-#   mise run build-web       # WebAssembly core -> packages/shapes-node/dist
+#   mise run build-web       # browser WebAssembly core -> packages/shapes-node/dist
+#   mise run node-natives    # server-side native core -> packages/shapes-node/native/<platform> (run per OS)
 #
 #   mise run test            # every suite (depends on the three below)
 #   mise run test-swift      #   the SwiftPM suite (Core ML on macOS, LiteRT on Linux)
@@ -108,6 +109,48 @@ description = "Build the Android AAR (drives android-natives, then Gradle)"
 dir = "{{ config_root }}/packages/shapes-kotlin"
 tools = { java = "temurin-21" }
 run = "./gradlew assembleRelease"
+
+[tasks.node-natives]
+description = "Build the native server-side Node core into packages/shapes-node/native/<platform>-<arch> (run on each target OS)"
+dir = "{{ config_root }}"
+shell = "bash -c"
+depends = ["litert-libs"]
+run = """
+set -euo pipefail
+# The Node package is isomorphic: browsers get the WebAssembly + LiteRT.js build,
+# Node gets this prebuilt native core (the ShapesNode product = the C ABI in
+# CABI.swift; AndroidJNI.swift is #if os(Android), so a host build is just the
+# ABI). koffi in packages/shapes-node binds shapes_* over it. Cross-OS builds
+# aren't possible, so run this on each target OS; publish gathers them.
+#
+# Backend per OS matches the rest of the SDK: Linux uses LiteRT (.tflite, links
+# the vendored libLiteRt.so, static Swift+Foundation so the .so is
+# self-contained); macOS uses Core ML (.mlmodelc) against the OS-provided Swift
+# runtime and system frameworks (nothing extra to ship).
+ARCH=$(uname -m); case "$ARCH" in x86_64|amd64) NARCH=x64;; arm64|aarch64) NARCH=arm64;; *) NARCH=$ARCH;; esac
+if [ "$(uname)" = "Darwin" ]; then
+    KEY="darwin-$NARCH"; dest="packages/shapes-node/native/$KEY"; rm -rf "$dest" && mkdir -p "$dest"
+    swift build -c release --product ShapesNode -Xlinker -rpath -Xlinker @loader_path
+    cp ".build/release/libShapesNode.dylib" "$dest/"
+else
+    KEY="linux-$NARCH"; dest="packages/shapes-node/native/$KEY"; rm -rf "$dest" && mkdir -p "$dest"
+    # Static Foundation on Linux autolinks -lcurl/-lxml2/-lz; provide dev-name
+    # symlinks to the runtime sonames (the recorded DT_NEEDED stays the soname,
+    # which is present on any normal Linux).
+    tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+    for so in libcurl.so.4 libxml2.so.2 libz.so.1; do
+        src=$(ldconfig -p 2>/dev/null | awk -v n="$so" '$1==n{print $NF; exit}')
+        [ -n "$src" ] && ln -sf "$src" "$tmp/$(echo "$so" | sed 's/\\.so.*/.so/')"
+    done
+    LARCH=$([ "$NARCH" = "x64" ] && echo linux-x64 || echo linux-arm64)
+    DAL_INFERENCE_LITERT=1 swift build -c release --product ShapesNode -Xswiftc -static-stdlib \\
+        -Xlinker "-L$tmp" -Xlinker "-LVendor/litert/lib/$LARCH" -Xlinker -rpath -Xlinker '$ORIGIN'
+    cp ".build/release/libShapesNode.so" "$dest/"
+    cp "Vendor/litert/lib/$LARCH/libLiteRt.so" "$dest/"
+fi
+ls -la "$dest"
+echo "done: packages/shapes-node/native/$KEY ready"
+"""
 
 [tasks.build-web]
 description = "Build the WebAssembly core into packages/shapes-node/dist"

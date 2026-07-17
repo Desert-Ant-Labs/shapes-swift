@@ -191,13 +191,14 @@ val offline = Shapes.bundled()                       // needs shapes-tflite-reso
 
 ### Install
 
-Requirements: a browser (or browser-like) runtime with `@litertjs/core` (LiteRT.js). Inference runs in the browser (XNNPACK-accelerated CPU by default, optional WebGPU); in plain Node the pipeline loads but the model session is unavailable.
+The same import runs in the browser (WebAssembly + LiteRT.js) and server-side in Node (a prebuilt native core), selected automatically by conditional exports. Node needs no setup; browser builds add the LiteRT.js runtime.
 
 ```bash
-npm install @desert-ant-labs/shapes @litertjs/core
+npm install @desert-ant-labs/shapes      # works server-side in Node out of the box
+npm install @litertjs/core               # add for browser builds (optional peer dependency)
 ```
 
-`@litertjs/core` is an optional peer dependency.
+Server-side native builds ship for linux-x64 (LiteRT) and darwin-arm64 (Core ML); other platforms fall back to a clear error, so use the Swift package or a browser there.
 
 ### Usage
 
@@ -218,7 +219,7 @@ const shapes = await Shapes.load({
 });
 ```
 
-Bring your own LiteRT.js module, useful for browser bundlers and React Native:
+Bring your own LiteRT.js module (browser), useful for bundlers and React Native:
 
 ```js
 import * as litert from "@litertjs/core";

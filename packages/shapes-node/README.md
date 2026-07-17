@@ -1,12 +1,20 @@
 # @desert-ant-labs/shapes
 
-On-device single-stroke shape recognition for JavaScript (node and browsers).
-Turns one hand-drawn stroke into a clean line, rectangle, triangle, ellipse, or
-star, fully locally: the package runs through a local WebAssembly runtime with
-inference via LiteRT.js.
+On-device single-stroke shape recognition for JavaScript that runs **the same
+code in the browser and server-side in Node**. Turns one hand-drawn stroke into
+a clean line, rectangle, triangle, ellipse, or star, fully locally.
+
+One import, resolved automatically by conditional exports:
+
+- **Browser** (bundlers, `import` in a web app): a local WebAssembly pipeline
+  with [LiteRT.js](https://www.npmjs.com/package/@litertjs/core) inference.
+- **Node** (server-side): a prebuilt native core (LiteRT on Linux, Core ML on
+  macOS). No build tools, no flags.
 
 ```bash
-npm install @desert-ant-labs/shapes @litertjs/core   # LiteRT.js is a browser runtime
+npm install @desert-ant-labs/shapes
+# In a browser build, also add the LiteRT.js runtime:
+npm install @litertjs/core
 ```
 
 ```js
@@ -18,24 +26,28 @@ const shape = await shapes.recognize(points);  // points: [{x, y}, ...] or [x0, 
 if (shape?.kind === "rectangle") {
   shape.corners;   // four {x, y} points
 }
+shapes.dispose();  // (Node) free the native handle when done; no-op in the browser
 ```
 
 `Shapes.load()` accepts:
 
-- `directory` (node): an explicit model directory; files already there are used
+- `directory` (Node): an explicit model directory; files already there are used
   offline, otherwise the model is downloaded into it. Omit for the managed
   cache (`~/.cache/desert-ant-models/...`).
+- `cacheRoot` (Node): base directory for the managed cache (default `~/.cache`).
 - `onProgress`: download progress callback, fraction in `[0, 1]`.
-- `litert`: bring-your-own LiteRT.js module (the `@litertjs/core` namespace),
-  useful for bundlers and custom builds.
-- `litertWasmDir`: URL/path to the LiteRT.js Wasm directory (defaults to the
-  installed package in node and the jsDelivr CDN in the browser).
-- `accelerator`: `"wasm"` (XNNPACK CPU, default), `"webgpu"`, or `"webnn"`.
-
-> LiteRT.js needs a browser (DOM/WebGPU), so recognition runs in browsers; a
-> Node import loads fine but model inference requires a browser environment.
+- Browser-only: `litert` (bring-your-own `@litertjs/core`), `litertWasmDir`
+  (URL/path to the LiteRT.js Wasm directory; defaults to the installed package,
+  or the jsDelivr CDN), and `accelerator` (`"wasm"` XNNPACK CPU default,
+  `"webgpu"`, or `"webnn"`).
 
 `recognize(points, options?)` returns a `Shape` (discriminated by `kind`:
 `"line"`, `"rectangle"`, `"triangle"`, `"ellipse"`, `"star"`) or `null` when the
 stroke is rejected or degenerate. `options.minimumConfidence` (default `0`)
 raises the classifier threshold on top of each class's calibrated gate.
+
+### Platforms
+
+Server-side native builds ship for **linux-x64** (LiteRT) and **darwin-arm64**
+(Core ML). Other platforms fall back to a clear error at `load()`; use the Swift
+package or a browser for those. The browser build runs anywhere with WebAssembly.

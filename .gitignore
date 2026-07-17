@@ -12,6 +12,7 @@ Vendor/
 Examples/ShapesWasmExample/node_modules/
 Examples/ShapesWasmExample/package-lock.json
 packages/shapes-node/dist/
+packages/shapes-node/native/
 packages/shapes-node/node_modules/
 packages/shapes-node/LICENSE.md
 packages/shapes-kotlin/src/main/jniLibs/
