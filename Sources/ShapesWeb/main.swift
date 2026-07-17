@@ -11,7 +11,7 @@ import JavaScriptKit
 //
 //     globalThis.__ShapesExports = {
 //       load(cacheRoot, directory?, onProgress?)   -> Promise<boolean>,
-//       loadBundled(metaJSON, modelBytes)          -> Promise<boolean>,
+//       loadBundled(metaJSON)                      -> Promise<boolean>,
 //       recognize(points, minimumConfidence?)      -> Promise<Shape | null>,
 //     }
 //
@@ -107,14 +107,11 @@ let recognizeFn = JSClosure { args in
 let loadFn = JSClosure { args in
     let cacheRoot = args.first?.string.flatMap { $0.isEmpty ? nil : $0 }
     let directory = (args.count > 1 ? args[1].string : nil).flatMap { $0.isEmpty ? nil : $0 }
-    let onProgress: JSFunction? = args.count > 2 ? args[2].function : nil
     let shapes = Shapes(directory: directory, cacheRoot: cacheRoot)
     return JSPromise { resolve in
         Task {
             do {
-                try await shapes.download { fraction in
-                    if let onProgress { _ = onProgress(fraction) }
-                }
+                try await shapes.download()
                 recognizer = shapes
                 resolve(.success(.boolean(true)))
             } catch {
@@ -125,37 +122,22 @@ let loadFn = JSClosure { args in
 }
 
 let loadBundledFn = JSClosure { args in
-    let metaJSON = args.first?.string
-    let byteArray = args.count > 1 ? args[1].object : nil
-    return JSPromise { resolve in
-        Task {
-            do {
-                guard let metaJSON, let byteArray, let n = byteArray.length.number else {
-                    throw ShapesError.resourceMissing
-                }
-                var bytes: [UInt8] = []
-                bytes.reserveCapacity(Int(n))
-                for i in 0..<Int(n) {
-                    bytes.append(UInt8(clamping: Int(byteArray[i].number ?? 0)))
-                }
-                guard let host = JSObject.global.__ShapesHost.object,
-                      let createSession = host.createSession.object else {
-                    throw ShapesError.resourceMissing
-                }
-                guard let promise = createSession(JSTypedArray<UInt8>(bytes).jsValue).object.flatMap(JSPromise.init) else {
-                    throw ShapesError.predictionFailed
-                }
-                _ = try await promise.value
-                let assets = try ModelAssets(metaJSON: metaJSON, session: JSInferenceSession(hostGlobal: "__ShapesHost"))
-                let shapes = Shapes(assets: assets)
-                try await shapes.waitUntilLoaded()
-                recognizer = shapes
-                resolve(.success(.boolean(true)))
-            } catch {
-                resolve(.failure(.string(String(describing: error))))
-            }
+    guard let metaJSON = args.first?.string else {
+        return JSPromise.reject(String(describing: ShapesError.resourceMissing)).jsValue()
+    }
+    return JSPromise.async { () async throws(JSException) -> JSValue in
+        do {
+            let assets = try ModelAssets(metaJSON: metaJSON, session: JSInferenceSession(hostGlobal: "__ShapesHost"))
+            let shapes = Shapes(assets: assets)
+            try await shapes.waitUntilLoaded()
+            recognizer = shapes
+            return .boolean(true)
+        } catch let error as JSException {
+            throw error
+        } catch {
+            throw JSException(message: String(describing: error))
         }
-    }.jsValue
+    }.jsValue()
 }
 
 let exports = JSObject.global.Object.function!.new()

@@ -43,7 +43,7 @@ Requirements: iOS 16+, macOS 13+, tvOS 16+, watchOS 9+, visionOS 1+, and Swift 5
 Add Shapes with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.3")
+.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.4")
 ```
 
 Then add the `Shapes` product to your app target. Live PencilKit snapping is part of the `Shapes` product.
@@ -51,7 +51,7 @@ Then add the `Shapes` product to your app target. Live PencilKit snapping is par
 The Core ML model is bundled by default because Shapes is small. `ShapesCoreMLResources` remains available for explicit bundle construction and tests. SwiftPM consumers who prefer on-demand download or an explicit model directory can disable the default `BundledModel` trait:
 
 ```swift
-.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.3", traits: [])
+.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.4.4", traits: [])
 ```
 
 With the trait disabled, `Shapes()` downloads on demand and `Shapes(directory:)` loads from or downloads into your chosen directory.
@@ -135,7 +135,7 @@ dependencyResolutionManagement {
 
 // build.gradle.kts
 dependencies {
-    implementation("ai.desertant:shapes:0.4.3")
+    implementation("ai.desertant:shapes:0.4.4")
 }
 ```
 
@@ -143,7 +143,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    implementation("ai.desertant:shapes:0.4.3") {
+    implementation("ai.desertant:shapes:0.4.4") {
         exclude(group = "ai.desertant", module = "shapes-tflite-resources")
     }
 }

@@ -167,7 +167,8 @@ export class Shapes {
       // default. Browser bundlers understand new URL(..., import.meta.url) as a
       // package asset, and direct node_modules serving works too.
       const { metaJSON, modelBytes } = await loadPackagedModel();
-      await core.loadBundled(metaJSON, modelBytes);
+      model = await loadAndCompile(modelBytes, { accelerator });
+      await core.loadBundled(metaJSON);
       onProgress?.(1);
     } else {
       // Explicit directory keeps the old adopt-or-download behavior.
