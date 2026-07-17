@@ -12,7 +12,7 @@ jobs:
       - name: Install deps
         run: |
           apt-get update -qq
-          apt-get install -y -qq --no-install-recommends libcurl4-openssl-dev libxml2-dev zlib1g-dev python3 python3-venv curl unzip binutils
+          apt-get install -y -qq --no-install-recommends libcurl4-openssl-dev libxml2-dev zlib1g-dev python3 python3-venv curl unzip binutils file
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Vendor arm64 LiteRT
