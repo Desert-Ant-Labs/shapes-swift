@@ -269,7 +269,7 @@ Default behavior:
 
 - Swift: bundles the Core ML model by default, with explicit-directory download/adopt still available.
 - Android: bundles the LiteRT model by default through the normal `ai.desertant:shapes` dependency.
-- JavaScript: bundles the LiteRT model in the npm package by default.
+- JavaScript: downloads the LiteRT model from Hugging Face on `Shapes.load()` and caches it; Node uses `directory` and browser uses `modelBaseUrl` for self-hosted or offline files.
 
 Passing an explicit `directory` makes that directory the model home. Existing valid files are adopted for offline use; otherwise Shapes downloads into that directory and reuses it later.
 
