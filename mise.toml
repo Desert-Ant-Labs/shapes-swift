@@ -435,55 +435,36 @@ set -euo pipefail
 # what flips core to LiteRTSession). The litert-android AAR's per-ABI
 # libLiteRt.so must be under Vendor/litert/lib/android-<arch>/. The Swift
 # Android SDK and the NDK it depends on (r27d+) install on demand below.
-API=31              # Android minSdk/API level to build against
+API=24              # Android minSdk/API level to build against
 LITERT_VER=2.1.6    # LiteRT (litert-android AAR) version to vendor
 KOTLIN=packages/shapes-kotlin/src/main
 NDK_VER=r27d
 export SWIFT_ANDROID_STATIC_BUILD=1
 export DAL_INFERENCE_LITERT=1
 
-# Match the SDK bundle to the installed toolchain version. Download and install
-# from the local file (no --checksum needed), so any Swift version just works.
-SWIFT_VER=$(swift --version 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]/){print $i; exit}}')
-[ -n "$SWIFT_VER" ] || { echo "error: could not determine the Swift version" >&2; exit 1; }
-BUNDLE_NAME=swift-$SWIFT_VER-RELEASE_android.artifactbundle
+# Build the Android natives against the finagolfin API-24 Swift Android SDK: the
+# official release bundles floor at API 28 (Bionic gained posix_spawn there),
+# while this community bundle is compiled at API 24 (self-contained NDK-27d
+# sysroot) and pairs with the matching OSS Swift toolchain. Override the trio to
+# swap in another bundle/toolchain (e.g. the official 6.4+ stable one later).
+FIN_TC="${SWIFT_ANDROID_TOOLCHAIN:-6.2.0}"
+FIN_URL="${SWIFT_ANDROID_SDK_URL:-https://github.com/finagolfin/swift-android-sdk/releases/download/6.2/swift-6.2-RELEASE-android-24-0.1.artifactbundle.tar.gz}"
+FIN_SUM="${SWIFT_ANDROID_SDK_CHECKSUM:-c26ebfd4e32c0ca1beabcc45729b62042da57ee76d7d043f63f2235da90dc491}"
 
-# Locate (installing on demand) the Android artifactbundle. SwiftPM's SDK dir
+command -v swiftly >/dev/null 2>&1 || { echo "error: swiftly is required to manage the OSS Swift $FIN_TC toolchain the Android build needs" >&2; exit 1; }
+swiftly list 2>/dev/null | grep -q "Swift $FIN_TC\b" || { echo "Installing Swift $FIN_TC (one-time, ~800MB)..."; swiftly install "$FIN_TC"; }
+SW() { swiftly run "$@" +"$FIN_TC"; }   # run a command under the pinned OSS toolchain
+
+# Locate (installing on demand) the API-24 artifactbundle. SwiftPM's SDK dir
 # differs by host OS, so check both.
-find_bundle() { for d in "$HOME/.swiftpm/swift-sdks" "$HOME/Library/org.swift.swiftpm/swift-sdks"; do [ -d "$d/$BUNDLE_NAME" ] && { echo "$d/$BUNDLE_NAME"; return 0; }; done; return 1; }
+find_bundle() { for d in "$HOME/.swiftpm/swift-sdks" "$HOME/Library/org.swift.swiftpm/swift-sdks"; do b=$(ls -dt "$d"/*android*24*.artifactbundle 2>/dev/null | head -1 || true); [ -n "$b" ] && { echo "$b"; return 0; }; done; return 1; }
 BUNDLE=$(find_bundle || true)
 if [ -z "$BUNDLE" ]; then
-    echo "Installing the Swift Android SDK $SWIFT_VER (one-time)..."
-    tmp=$(mktemp -d)
-    curl -fSL -o "$tmp/sdk.tar.gz" "https://download.swift.org/swift-$SWIFT_VER-release/android-sdk/swift-$SWIFT_VER-RELEASE/$BUNDLE_NAME.tar.gz"
-    swift sdk install "$tmp/sdk.tar.gz"
-    rm -rf "$tmp"
+    echo "Installing the API-24 Swift Android SDK (one-time, ~370MB)..."
+    SW swift sdk install "$FIN_URL" --checksum "$FIN_SUM"
     BUNDLE=$(find_bundle || true)
 fi
-[ -n "$BUNDLE" ] || { echo "error: Android Swift SDK bundle not found after install" >&2; exit 1; }
-
-# Remove any other-version Android SDK so the target triple resolves
-# unambiguously to the one matching this toolchain (a stale SDK is often not
-# NDK-configured and breaks the build). See the getting-started guide.
-others=$(swift sdk list 2>/dev/null | grep -iE 'android$' | grep -vx "swift-$SWIFT_VER-RELEASE_android" || true)
-if [ -n "$others" ]; then
-    echo "$others" | while read -r old; do
-        echo "Removing mismatched Android SDK $old"
-        swift sdk remove "$old" >/dev/null 2>&1 || true
-    done
-fi
-
-# The SDK requires an Android NDK (r27d+); download it into the bundle and run
-# its setup script once (marker: a populated ndk-sysroot). See
-# https://www.swift.org/documentation/articles/swift-sdk-for-android-getting-started.html
-if ! find -L "$BUNDLE/swift-android/ndk-sysroot" -name libc++_shared.so 2>/dev/null | grep -q .; then
-    echo "Installing the Android NDK $NDK_VER and configuring the SDK (one-time, large download)..."
-    ( cd "$BUNDLE/swift-android"
-      curl -fSL -o ndk.zip "https://dl.google.com/android/repository/android-ndk-$NDK_VER-$(uname -s).zip"
-      unzip -qo ndk.zip
-      rm -f ndk.zip
-      ANDROID_NDK_HOME="$PWD/android-ndk-$NDK_VER" ./scripts/setup-android-sdk.sh )
-fi
+[ -n "$BUNDLE" ] || { echo "error: android-24 Swift SDK bundle not found after install" >&2; exit 1; }
 
 # LiteRT android libs (linked per ABI) from the litert-android AAR on Google's
 # Maven. Each jni/<abi>/libLiteRt.so exposes the LiteRT CompiledModel C API the
@@ -516,8 +497,10 @@ for c in llvm-strip "$sbin/llvm-strip" llvm-objcopy "$sbin/llvm-objcopy"; do
     fi
 done
 if [ -z "$strip_bin" ]; then
-    for ndk in "$BUNDLE/swift-android/android-ndk-$NDK_VER" "${ANDROID_NDK_HOME:-/nonexistent}"; do
-        cand=$(find "$ndk/toolchains/llvm/prebuilt" -name llvm-strip 2>/dev/null | head -1 || true)
+    # The finagolfin bundle ships no NDK toolchain; reuse any llvm-strip from an
+    # installed Swift Android SDK's NDK, ANDROID_NDK_HOME, or $ANDROID_HOME/ndk.
+    for base in "$BUNDLE" $HOME/.swiftpm/swift-sdks/* "${ANDROID_NDK_HOME:-/nonexistent}" "${ANDROID_HOME:-$HOME/Android/Sdk}/ndk" "$HOME/Library/Android/sdk/ndk"; do
+        cand=$(find "$base" -name llvm-strip 2>/dev/null | head -1 || true)
         [ -n "$cand" ] && { strip_bin=$cand; strip_mode=strip; break; }
     done
 fi
@@ -527,14 +510,19 @@ for pair in "arm64-v8a:aarch64" "x86_64:x86_64"; do
     abi=${pair%:*}
     arch=${pair#*:}
     echo "== $abi ($arch) =="
-    resources="$BUNDLE/swift-android/swift-resources/usr/lib/swift_static-$arch"
-    swift build -c release --product ShapesAndroid --swift-sdk "$arch-unknown-linux-android$API" -Xswiftc -static-stdlib -Xswiftc -resource-dir -Xswiftc "$resources" -Xlinker -LVendor/litert/lib/android-$arch
+    # finagolfin names the static stdlib dir per-arch (swift_static-<arch>), but the
+    # driver derives the runtime dir as a sibling `swift_static/`, so bridge it with
+    # a per-arch symlink and point -resource-dir at it (yields a self-contained .so).
+    libdir=$(dirname "$(find "$BUNDLE" -type d -name "swift_static-$arch" 2>/dev/null | head -1)")
+    [ -n "$libdir" ] || { echo "error: swift_static-$arch not found in $BUNDLE" >&2; exit 1; }
+    ln -sfn "swift_static-$arch" "$libdir/swift_static"
+    SW swift build -c release --product ShapesAndroid --swift-sdk "$arch-unknown-linux-android$API" -Xswiftc -static-stdlib -Xswiftc -resource-dir -Xswiftc "$libdir/swift_static" -Xlinker -LVendor/litert/lib/android-$arch
 
     dest="$KOTLIN/jniLibs/$abi"
     rm -rf "$dest" && mkdir -p "$dest"
     cp ".build/$arch-unknown-linux-android$API/release/libShapesAndroid.so" "$dest/"
     cp "Vendor/litert/lib/android-$arch/libLiteRt.so" "$dest/"
-    ndk_cxx=$(find -L "$BUNDLE/swift-android/ndk-sysroot/usr/lib" -path "*$arch*" -name libc++_shared.so 2>/dev/null | head -1 || true)
+    ndk_cxx=$(find -L "$BUNDLE" -path "*$arch-linux-android*" -name libc++_shared.so 2>/dev/null | head -1 || true)
     cp "$ndk_cxx" "$dest/"
 
     so="$dest/libShapesAndroid.so"

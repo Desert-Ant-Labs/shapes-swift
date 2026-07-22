@@ -24,14 +24,14 @@ plugins {
 apply(from = "swift-android.gradle.kts")
 
 group = "ai.desertant"
-version = "0.4.6"
+version = "0.5.0"
 
 android {
     namespace = "ai.desertant.shapes"
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 31 // platform libicu (NFKC) is available from API 31
+        minSdk = 24 // NFKC now runs via the host java.text.Normalizer (API 1+), no platform libicu
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }

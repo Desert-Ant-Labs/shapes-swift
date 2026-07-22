@@ -10,7 +10,7 @@ import ai.desertant.core.HostBridge
  * cross as a little-endian f64 byte array; the recognized shape comes back as an
  * FFIBuffer typed binary buffer.
  *
- * `regexMatches` / `jsonParseTree` / `httpTree` / `httpDownload` are the host
+ * `regexMatches` / `jsonParseTree` / `normalizeNfkc` / `httpTree` / `httpDownload` are the host
  * callbacks the native runtime looks up on this class. They forward to
  * `ai.desertant.core.HostBridge`. The core installs all of them unconditionally,
  * so every forwarder must be present even if this pipeline does not use it.
@@ -50,4 +50,7 @@ internal object ShapesNative {
 
     @JvmStatic
     fun httpDownload(urlUtf8: ByteArray, destUtf8: ByteArray): Int = HostBridge.httpDownload(urlUtf8, destUtf8)
+
+    @JvmStatic
+    fun normalizeNfkc(textUtf8: ByteArray): ByteArray = HostBridge.normalizeNfkc(textUtf8)
 }
