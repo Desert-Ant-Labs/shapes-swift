@@ -147,7 +147,7 @@ if [ "$(uname)" = "Darwin" ]; then
     # needs no LiteRT and ships no extra runtime. (Linux Node uses LiteRT and the
     # .tflite; the shared inferenceSession(modelPath:) picks per host.)
     KEY="darwin-$NARCH"; dest="packages/shapes-node/native/$KEY"; rm -rf "$dest" && mkdir -p "$dest"
-    swift build -c release --product ShapesNode -Xlinker -rpath -Xlinker @loader_path
+    swift build -c release --product ShapesNode --disable-default-traits -Xlinker -rpath -Xlinker @loader_path
     cp ".build/release/libShapesNode.dylib" "$dest/"
 else
     KEY="linux-$NARCH"; dest="packages/shapes-node/native/$KEY"; rm -rf "$dest" && mkdir -p "$dest"
@@ -160,7 +160,7 @@ else
         [ -n "$src" ] && ln -sf "$src" "$tmp/$(echo "$so" | sed 's/\\.so.*/.so/')"
     done
     LARCH=$([ "$NARCH" = "x64" ] && echo linux-x64 || echo linux-arm64)
-    DAL_INFERENCE_LITERT=1 swift build -c release --product ShapesNode -Xswiftc -static-stdlib \\
+    DAL_INFERENCE_LITERT=1 swift build -c release --product ShapesNode --disable-default-traits -Xswiftc -static-stdlib \\
         -Xlinker "-L$tmp" -Xlinker "-LVendor/litert/lib/$LARCH" -Xlinker -rpath -Xlinker '$ORIGIN' \\
         -Xlinker -z -Xlinker nodelete
     cp ".build/release/libShapesNode.so" "$dest/"
