@@ -1,7 +1,8 @@
 // The shapes-node test suite. Runs server-side in Node against the native core
-// (the `node` conditional-exports entry), with model files loaded from the local
-// LiteRT resources instead of the Hugging Face Hub. The browser entry
-// (WebAssembly + LiteRT.js) is exercised by the headless-Chromium example.
+// (the `@desert-ant-labs/shapes/native` entry, i.e. node.js), with model files
+// loaded from the local LiteRT resources instead of the Hugging Face Hub. The
+// default universal WebAssembly + LiteRT.js entry is exercised by the
+// headless-Chromium example.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import path from "node:path";

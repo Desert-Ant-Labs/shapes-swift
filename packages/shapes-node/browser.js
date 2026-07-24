@@ -1,39 +1,23 @@
-// On-device single-stroke shape recognition for JavaScript. This file resolves
-// model assets, owns the LiteRT.js session, and exposes the public typed API
-// (a `Shapes` class with an async `load` factory).
+// On-device single-stroke shape recognition for JavaScript. This is the
+// universal entry: it resolves model assets, owns the LiteRT.js session, and
+// exposes the public typed API (a `Shapes` class with an async `load` factory).
+// It runs in the browser and, via the platform seam below, server-side in Node
+// (the Client-Component SSR pass frameworks render in Node), both on the same
+// WebAssembly + @litertjs/core (LiteRT.js) pipeline: XNNPACK-accelerated CPU
+// ("wasm") by default, with optional WebGPU in the browser.
 //
-// Works in node and browsers via @litertjs/core (LiteRT.js): XNNPACK-accelerated
-// CPU ("wasm") by default, with optional WebGPU in the browser.
-
-const IS_NODE = typeof process !== "undefined" && !!process.versions?.node;
+// All node-only code lives behind the `#platform` import, which bundlers resolve
+// at build time by condition (browser -> platform-browser.js, otherwise
+// platform-node.js). That keeps this file free of `node:*` and of any static
+// reference to node-only chunks, so a single import builds cleanly for every
+// target of a multi-target bundler. For a prebuilt native server core (no
+// @litertjs/core, best server throughput), import `@desert-ant-labs/shapes/native`.
+import { setupCore, defaultWasmDir, readModelSource, defaultCacheRoot } from "#platform";
 
 // The wasm core instantiates at import time (top-level await); the model is
-// only wired in load().
-async function instantiateCore() {
-  globalThis.__ShapesHost ??= {};
-  const { instantiate } = await import("./dist/instantiate.js");
-  if (IS_NODE) {
-    // Give the Swift ModelStore node's fs as a platform seam (no `require`
-    // under the WASI shim); the download/verify/cache logic stays in Swift.
-    const fsmod = await import("node:fs");
-    globalThis.__DalNodeFS = {
-      existsSync: fsmod.existsSync, statSync: fsmod.statSync,
-      // Copy into an exact-length Uint8Array: node returns pooled Buffers for
-      // small files whose .buffer is the whole shared pool, which JavaScriptKit
-      // would over-read when marshalling into wasm memory.
-      readFileSync: (p) => new Uint8Array(fsmod.readFileSync(p)),
-      writeFileSync: fsmod.writeFileSync,
-      mkdirSync: fsmod.mkdirSync, renameSync: fsmod.renameSync, unlinkSync: fsmod.unlinkSync,
-    };
-    const { defaultNodeSetup } = await import("./dist/platforms/node.js");
-    await instantiate(await defaultNodeSetup({}));
-  } else {
-    const { init } = await import("./dist/index.js");
-    await init({});
-  }
-  return globalThis.__ShapesExports;
-}
-const core = await instantiateCore();
+// only wired in load(). The build-time-selected platform seam owns whatever is
+// node- or browser-specific about instantiation.
+const core = await setupCore();
 
 // @litertjs/core (LiteRT.js) is loaded once per process; its Wasm runtime files
 // (node_modules/@litertjs/core/wasm/) initialize a single time. Callers can
@@ -63,23 +47,27 @@ async function loadLiteRtModule(options) {
 
 async function resolveWasmDir(options) {
   if (options.litertWasmDir) return options.litertWasmDir;
-  if (IS_NODE) {
-    // Serve the runtime's own Wasm files straight from the installed package.
-    const { createRequire } = await import("node:module");
-    const { pathToFileURL } = await import("node:url");
-    const path = await import("node:path");
-    const fs = await import("node:fs");
-    const require = createRequire(import.meta.url);
-    // Package layout: <root>/dist/index.js and <root>/wasm/. Walk up from the
-    // resolved entry to the package root, then point at wasm/.
-    let dir = path.dirname(require.resolve("@litertjs/core"));
-    for (let i = 0; i < 4 && !fs.existsSync(path.join(dir, "wasm")); i++) {
-      dir = path.dirname(dir);
-    }
-    return pathToFileURL(path.join(dir, "wasm") + "/").href;
-  }
-  // Browser default: the jsDelivr CDN mirror of the package's wasm/ directory.
-  return "https://cdn.jsdelivr.net/npm/@litertjs/core/wasm/";
+  return defaultWasmDir();
+}
+
+// LiteRT.js loads its Wasm runtime through the DOM (a <script> tag) or a Web
+// Worker (importScripts); it has no plain-Node loader. So the default (wasm)
+// build can be imported during SSR but cannot run inference in Node. Detect that
+// up front and redirect to the native server build instead of letting LiteRT.js
+// fail deep inside with a cryptic `document is not defined`.
+function assertRuntimeCanLoadLiteRt(options) {
+  if (options.litert) return; // caller injected a working module; trust it
+  const hasDom = typeof document !== "undefined";
+  const hasWorker = typeof importScripts === "function";
+  if (hasDom || hasWorker) return;
+  throw new Error(
+    "@desert-ant-labs/shapes: the default import runs the browser WebAssembly " +
+      "runtime (LiteRT.js), which needs a browser/Worker environment and can't " +
+      "initialize in plain Node. For server-side inference import the native " +
+      "build instead: import { Shapes } from \"@desert-ant-labs/shapes/native\". " +
+      "(The default import is still safe to bundle for server-side rendering; " +
+      "only calling Shapes.load() in Node needs the native build.)",
+  );
 }
 
 let liteRtReady;
@@ -108,6 +96,7 @@ export class Shapes {
    */
   static async load(options = {}) {
     const resolved = options;
+    assertRuntimeCanLoadLiteRt(resolved);
     const lrt = await loadLiteRtModule(resolved);
     await ensureLiteRt(resolved, lrt);
     const { loadAndCompile, Tensor } = lrt;
@@ -130,11 +119,7 @@ export class Shapes {
     globalThis.__ShapesHost = {
       // modelSource is the cached file path (node) or the model bytes (browser).
       createSession: async (modelSource) => {
-        let modelData = modelSource;
-        if (typeof modelSource === "string" && IS_NODE) {
-          const fs = await import("node:fs");
-          modelData = new Uint8Array(fs.readFileSync(modelSource));
-        }
+        const modelData = await readModelSource(modelSource);
         model = await loadAndCompile(modelData, { accelerator });
       },
       run: async (inputs) => {
@@ -181,12 +166,7 @@ export class Shapes {
       // wires the session through createSession above. `directory` (node) adopts
       // a self-hosted folder. Base for the managed nested cache (node): ~/.cache;
       // empty (in-memory) in the browser.
-      let cacheRoot = "";
-      if (IS_NODE) {
-        const os = await import("node:os");
-        const path = await import("node:path");
-        cacheRoot = path.join(os.homedir(), ".cache");
-      }
+      const cacheRoot = await defaultCacheRoot();
       await core.load(cacheRoot, resolved.directory ?? "", onProgress);
     }
     return new Shapes();
@@ -201,6 +181,12 @@ export class Shapes {
     const flat = flatten(points);
     return core.recognize(flat, options.minimumConfidence ?? 0);
   }
+
+  /**
+   * Free native resources. No-op in the WebAssembly runtime; present so the same
+   * code works against the native server build (`@desert-ant-labs/shapes/native`).
+   */
+  dispose() {}
 }
 
 // Fetch self-hosted model files from a base URL (the `modelBaseUrl` opt-out).

@@ -24,7 +24,7 @@ plugins {
 apply(from = "swift-android.gradle.kts")
 
 group = "ai.desertant"
-version = "0.6.3"
+version = "0.7.0"
 
 android {
     namespace = "ai.desertant.shapes"

@@ -63,10 +63,16 @@ export interface LoadOptions {
 }
 
 /**
- * On-device single-stroke shape recognition for JavaScript. The same import runs
- * in the browser (WebAssembly + LiteRT.js) and server-side in Node (a prebuilt
- * native core), selected automatically by conditional exports. Create one with
- * `await Shapes.load(...)` and reuse it.
+ * On-device single-stroke shape recognition for JavaScript. The default
+ * `@desert-ant-labs/shapes` import is the browser WebAssembly + LiteRT.js build:
+ * it has no native dependencies, so it builds cleanly for every target of a
+ * multi-target bundler (Next, Remix, SvelteKit, Nuxt) and is safe to import
+ * during server-side rendering. LiteRT.js initializes only in a browser or Web
+ * Worker, so `Shapes.load()` runs inference in the browser; in plain Node it
+ * throws and directs you to the native build. For server-side inference in Node
+ * import `@desert-ant-labs/shapes/native` (a prebuilt native core, no
+ * `@litertjs/core`) from server-only code. Both expose this same `Shapes` API.
+ * Create one with `await Shapes.load(...)` and reuse it.
  *
  * ```ts
  * const shapes = await Shapes.load();
@@ -86,6 +92,7 @@ export declare class Shapes {
    * or `null` when rejected or degenerate.
    */
   recognize(points: Point[] | number[], options?: Options): Promise<Shape | null>;
-  /** Free the native handle (Node). No-op in the browser. Call when done. */
+  /** Free native resources (the `@desert-ant-labs/shapes/native` build). No-op in
+   * the default WebAssembly build. Safe to call in both. */
   dispose(): void;
 }

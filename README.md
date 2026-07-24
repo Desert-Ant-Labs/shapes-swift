@@ -43,7 +43,7 @@ Requirements: iOS 16+, macOS 13+, tvOS 16+, watchOS 9+, visionOS 1+, and Swift 5
 Add Shapes with Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.6.3")
+.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.7.0")
 ```
 
 Then add the `Shapes` product to your app target. Live PencilKit snapping is part of the `Shapes` product.
@@ -51,7 +51,7 @@ Then add the `Shapes` product to your app target. Live PencilKit snapping is par
 The Core ML model is bundled by default because Shapes is small. `ShapesCoreMLResources` remains available for explicit bundle construction and tests. SwiftPM consumers who prefer on-demand download or an explicit model directory can disable the default `BundledModel` trait:
 
 ```swift
-.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.6.3", traits: [])
+.package(url: "https://github.com/Desert-Ant-Labs/shapes.git", from: "0.7.0", traits: [])
 ```
 
 With the trait disabled, `Shapes()` downloads on demand and `Shapes(directory:)` loads from or downloads into your chosen directory.
@@ -200,38 +200,44 @@ val offline = Shapes.bundled()                       // explicit bundled constru
 
 ### Install
 
-The same import runs in the browser (WebAssembly + LiteRT.js) and server-side in Node (a prebuilt native core), selected automatically by conditional exports. Node needs no setup; browser builds add the LiteRT.js runtime.
+Two entries share one `Shapes` API. The default `@desert-ant-labs/shapes` is the browser build (WebAssembly + LiteRT.js); it has no native dependencies, so it bundles cleanly for every target of a multi-target bundler (Next.js, Remix, SvelteKit, Nuxt), including the browser bundle and the Client-Component SSR pass those frameworks render in Node. `@desert-ant-labs/shapes/native` is a prebuilt native core for server-side inference in Node.
 
 ```bash
-# Browser builds:
+# Browser (default entry):
 npm i @desert-ant-labs/shapes @litertjs/core
 
-# Node only:
+# Server-side inference in Node (/native entry) needs no extra install:
 npm i @desert-ant-labs/shapes
 ```
 
-Server-side native builds ship for linux-x64, linux-arm64 (LiteRT), and darwin-arm64 (Core ML); other platforms fall back to a clear error, so use the Swift package or a browser there.
+The default import is safe to *import* during server-side rendering, but LiteRT.js initializes only in a browser or Web Worker, so `Shapes.load()` runs inference in the browser; in plain Node it throws an actionable error pointing you to `@desert-ant-labs/shapes/native`. The native build ships for linux-x64, linux-arm64 (LiteRT), and darwin-arm64 (Core ML); other platforms fall back to a clear error, so use the Swift package or a browser there.
 
 ### Usage
 
 ```ts
-import { Shapes } from "@desert-ant-labs/shapes";
+import { Shapes } from "@desert-ant-labs/shapes";     // browser; use "@desert-ant-labs/shapes/native" server-side
 
 const shapes = await Shapes.load();               // downloads + caches on first use
 const shape = await shapes.recognize(points);     // [{x, y}, ...] or [x0, y0, ...]
 if (shape?.kind === "ellipse") shape.center;
 ```
 
+For server-side inference, import the same API from the native subpath:
+
+```ts
+import { Shapes } from "@desert-ant-labs/shapes/native";   // server only
+```
+
 Unlike the Swift and Android packages, the JavaScript package does not bundle the
 model: `Shapes.load()` downloads it from the Hugging Face Hub at the SDK's pinned
-tag on first use and caches it (the OS cache dir in Node, the fetch cache in the
-browser). To self-host or run offline, pass `directory` (Node) or `modelBaseUrl`
-(browser):
+tag on first use and caches it (the OS cache dir for the native build, the fetch
+cache in the browser). To self-host or run offline, pass `directory` (native
+build) or `modelBaseUrl` (browser):
 
 ```js
 const shapes = await Shapes.load({
-  directory: "/var/cache/shapes",       // Node: adopt/download files here
-  modelBaseUrl: "/assets/shapes/",      // Browser: serve the files yourself
+  directory: "/var/cache/shapes",       // native build: adopt/download files here
+  modelBaseUrl: "/assets/shapes/",      // browser: serve the files yourself
   onProgress: (fraction) => console.log(fraction),
 });
 ```
@@ -269,7 +275,7 @@ Default behavior:
 
 - Swift: bundles the Core ML model by default, with explicit-directory download/adopt still available.
 - Android: bundles the LiteRT model by default through the normal `ai.desertant:shapes` dependency.
-- JavaScript: downloads the LiteRT model from Hugging Face on `Shapes.load()` and caches it; Node uses `directory` and browser uses `modelBaseUrl` for self-hosted or offline files.
+- JavaScript: downloads the model from Hugging Face on `Shapes.load()` and caches it; the browser build (`@desert-ant-labs/shapes`) runs LiteRT.js, and the native build (`@desert-ant-labs/shapes/native`) runs LiteRT on Linux and Core ML on macOS for server-side Node. The native build uses `directory` and the browser uses `modelBaseUrl` for self-hosted or offline files.
 
 Passing an explicit `directory` makes that directory the model home. Existing valid files are adopted for offline use; otherwise Shapes downloads into that directory and reuses it later.
 
