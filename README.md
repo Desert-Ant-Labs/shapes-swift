@@ -275,6 +275,6 @@ Passing an explicit `directory` makes that directory the model home. Existing va
 
 ## License
 
-[Desert Ant Labs Source-Available License](https://license.desertant.ai/1.0). Free for most apps; a commercial license is required at scale. Full terms are at the link. Licensing: <licensing@desertant.ai>.
-
-Third-party data and model attributions are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+[Desert Ant Labs Source-Available License](https://license.desertant.com/1.0). Free for
+most apps; a commercial license is required at scale. Full terms are at the link.
+Licensing: <licensing@desertant.com>.
