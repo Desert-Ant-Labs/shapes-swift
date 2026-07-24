@@ -80,7 +80,7 @@ mavenPublishing {
         licenses {
             license {
                 name.set("Desert Ant Labs Source-Available License 1.0")
-                url.set("https://license.desertant.ai/1.0")
+                url.set("https://license.desertant.com/1.0")
                 distribution.set("repo")
             }
         }
@@ -88,8 +88,8 @@ mavenPublishing {
             developer {
                 id.set("desert-ant-labs")
                 name.set("Desert Ant Labs")
-                email.set("contact@desertant.ai")
-                url.set("https://desertant.ai")
+                email.set("contact@desertant.com")
+                url.set("https://desertant.com")
             }
         }
         scm {
